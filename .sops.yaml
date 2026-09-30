@@ -1,0 +1,19 @@
+keys:
+  - &admin_zirondi "age1d2njeymz4gafrp8wt0xnc3kvz9flw9cwanddjktrnyt38ye96chsdffk64"
+
+  # Para os hosts, rodar no host (ou do Mac): ssh-keyscan <host> | ssh-to-age
+  - &host_rpi3 "age12kn5m9te5au8nf5fpfgzrawl7fevng9hyhm2hgp6z6pygf0raa3qhvknt0"
+  - &host_hetzner "age14gnc8rn6hzrx5h0t0lqemhnv5s308y5av9hzfpmwahr6mcr54fxqr3yp4y"
+  # - &host_nitro5 "age1...CHAVE_DO_NITRO5_AQUI..."
+
+creation_rules:
+  # Regra default para arquivos de secrets nos serviços
+  - path_regex: .*\.sops\.yaml$
+    key_groups:
+      - age:
+          - *admin_zirondi
+          # Adicione os hosts que devem ter acesso aos serviços aqui
+          # ou crie regex específicos para cada serviço se preferir separar estritamente
+          - *host_rpi3
+          - *host_hetzner
+          # - *host_nitro5

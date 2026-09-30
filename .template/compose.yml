@@ -1,0 +1,44 @@
+name: template
+# >> -------------------- Networks -------------------- << #
+networks:
+  network-name:
+    name: network-name
+    driver:
+    ipam:
+      config:
+        - subnet:
+
+# >> -------------------- Secrets --------------------- << #
+secrets:
+  secret_name:
+    external: true
+
+# >> -------------------- Services -------------------- << #
+services:
+  service-name:
+    build:
+    image:
+    container_name:
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges=true
+    privileged:
+    shm_size:
+    cap_add:
+    read_only:
+    healthcheck:
+    depends_on:
+    user:
+    environment:
+      - TZ=America/Sao_Paulo
+    command:
+    labels:
+    volumes:
+      # Time sync between the the supersystem and the container
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    tmpfs:
+    networks:
+    ports:
+    secrets:
+    entrypoint:

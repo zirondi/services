@@ -1,0 +1,20 @@
+# Secrets (ignore unencrypted files, keep .gitkeep and *.sops.yaml / *.sops)
+**/secrets/*
+!**/secrets/.gitkeep
+!**/secrets/*.sops.yaml
+!**/secrets/*.sops
+
+# Docker Compose overrides & envs
+*.env
+**/*.override.yml
+compose.override.yml
+
+# Operating System & Editor artifacts
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Logs and databases
+*.log

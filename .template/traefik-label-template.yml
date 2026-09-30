@@ -1,0 +1,10 @@
+labels:
+  - "traefik.enable=true"
+  - "traefik.http.routers.{NAME}.rule=Host(`{NAME}.leazirondi.com.br`) || Host(`www.{NAME}.leazirondi.com.br`)"
+  - "traefik.http.routers.{NAME}.entrypoints=websecure"
+  - "traefik.http.routers.{NAME}.tls=true"
+  - "traefik.http.routers.{NAME}.middlewares=my-service-csp@file"
+  - "traefik.http.services.{NAME}.loadbalancer.server.port={PORT}"
+  - "traefik.docker.network=edge-network"
+
+  - "traefik.http.routers.traefik.service=api@internal" #Use only for exposing traefik dashboard
