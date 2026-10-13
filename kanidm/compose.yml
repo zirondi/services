@@ -1,0 +1,32 @@
+name: kanidm
+
+# >> -------------------- Networks -------------------- << #
+networks:
+  tunnel-network:
+    external: true
+
+# >> -------------------- Services -------------------- << #
+services:
+  kanidm:
+    image: docker.io/kanidm/server:latest
+    container_name: kanidm
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges=true
+    environment:
+      - TZ=America/Sao_Paulo
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - ${HOME}/volumes/kanidm/data:/data
+      - ./server.toml:/data/server.toml:ro
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.kanidm.rule=Host(`idm.leazirondi.com.br`)"
+      - "traefik.http.routers.kanidm.entrypoints=web"
+      - "traefik.http.services.kanidm.loadbalancer.server.scheme=https"
+      - "traefik.http.services.kanidm.loadbalancer.server.port=8443"
+      - "traefik.http.services.kanidm.loadbalancer.serversTransport=kanidm-transport@file"
+      - "traefik.docker.network=tunnel-network"
+    networks:
+      - tunnel-network

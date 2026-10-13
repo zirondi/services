@@ -1,0 +1,8 @@
+domain = "idm.leazirondi.com.br"
+origin = "https://idm.leazirondi.com.br"
+db_path = "/data/kanidm.db"
+tls_chain = "/data/certs/chain.pem"
+tls_key = "/data/certs/key.pem"
+bindaddress = "[::]:8443"
+ldapbindaddress = "[::]:3636"
+trust_x_forward_for = true

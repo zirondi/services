@@ -1,0 +1,30 @@
+name: trilium
+
+# >> -------------------- Networks -------------------- << #
+networks:
+  tunnel-network:
+    external: true
+
+# >> -------------------- Services -------------------- << #
+services:
+  trilium:
+    image: docker.io/triliumnext/notes:latest
+    container_name: trilium
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges=true
+    environment:
+      - TZ=America/Sao_Paulo
+      - TRILIUM_DATA_DIR=/home/node/trilium-data
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - ${HOME}/volumes/trilium/data:/home/node/trilium-data
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.trilium.rule=Host(`notes.leazirondi.com.br`)"
+      - "traefik.http.routers.trilium.entrypoints=web"
+      - "traefik.http.services.trilium.loadbalancer.server.port=8080"
+      - "traefik.docker.network=tunnel-network"
+    networks:
+      - tunnel-network

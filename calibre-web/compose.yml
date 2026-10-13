@@ -1,0 +1,49 @@
+name: calibre-web
+
+# >> -------------------- Networks -------------------- << #
+networks:
+  tunnel-network:
+    external: true
+
+# >> -------------------- Secrets --------------------- << #
+secrets:
+  hardcover_token:
+    file: ./secrets/hardcover_token
+
+# >> -------------------- Services -------------------- << #
+services:
+  calibre-web:
+    image: docker.io/crocodilestick/calibre-web-automated:latest
+    container_name: calibre-web
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges=true
+    environment:
+      - TZ=America/Sao_Paulo
+      - HARDCOVER_TOKEN_FILE=/run/secrets/hardcover_token
+      - NETWORK_SHARE_MODE=false
+      - TRUSTED_PROXY_COUNT=2
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - ${HOME}/volumes/calibre-web/config:/config
+      - ${HOME}/volumes/calibre-web/ingest:/cwa-book-ingest
+      - ${HOME}/volumes/calibre-web/library:/calibre-library
+    labels:
+      # Main router
+      - "traefik.enable=true"
+      - "traefik.http.routers.calibre-web.rule=Host(`calibre.leazirondi.com.br`)"
+      - "traefik.http.routers.calibre-web.entrypoints=web"
+      - "traefik.http.services.calibre-web.loadbalancer.server.port=8083"
+      - "traefik.docker.network=tunnel-network"
+      # www -> naked redirect
+      - "traefik.http.routers.calibre-web-www.rule=Host(`www.calibre.leazirondi.com.br`)"
+      - "traefik.http.routers.calibre-web-www.entrypoints=web"
+      - "traefik.http.routers.calibre-web-www.middlewares=calibre-www-redirect"
+      - "traefik.http.middlewares.calibre-www-redirect.redirectregex.regex=^https?://www\\.calibre\\.leazirondi\\.com\\.br/(.*)"
+      - "traefik.http.middlewares.calibre-www-redirect.redirectregex.replacement=https://calibre.leazirondi.com.br/$${1}"
+      - "traefik.http.middlewares.calibre-www-redirect.redirectregex.permanent=true"
+    secrets:
+      - hardcover_token
+    networks:
+      - tunnel-network
