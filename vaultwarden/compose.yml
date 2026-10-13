@@ -1,0 +1,49 @@
+name: vaultwarden
+
+# >> -------------------- Networks -------------------- << #
+networks:
+  tunnel-network:
+    external: true
+  mail-internal:
+    external: true
+
+# >> -------------------- Secrets --------------------- << #
+secrets:
+  admin_token:
+    file: ./secrets/admin_token
+
+# >> -------------------- Services -------------------- << #
+services:
+  vaultwarden:
+    image: docker.io/vaultwarden/server:latest
+    container_name: vaultwarden
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges=true
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.vaultwarden.rule=Host(`vault.leazirondi.com.br`)"
+      - "traefik.http.routers.vaultwarden.entrypoints=web"
+      - "traefik.http.services.vaultwarden.loadbalancer.server.port=80"
+      - "traefik.docker.network=tunnel-network"
+    environment:
+      - TZ=America/Sao_Paulo
+      - DOMAIN=https://vault.leazirondi.com.br
+      # Para o primeiro cadastro: crie um convite via painel /admin ou altere temporariamente para true
+      - SIGNUPS_ALLOWED=false
+      - INVITATIONS_ALLOWED=true
+      - SHOW_PASSWORD_HINT=false
+      - WEBSOCKET_ENABLED=true
+      - ADMIN_TOKEN_FILE=/run/secrets/admin_token
+      - LOG_LEVEL=info
+      - EXTENDED_LOGGING=true
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - ${HOME}/volumes/vaultwarden/data:/data
+      - ./secrets:/run/secrets:ro
+    secrets:
+      - admin_token
+    networks:
+      - tunnel-network
+      - mail-internal
