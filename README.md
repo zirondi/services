@@ -13,16 +13,17 @@ Declarative Docker/Podman Compose application stacks deployed and running on clo
 | Stack | Service Components | Role / Network Placement |
 | :--- | :--- | :--- |
 | **`socket-proxy`** | LinuxServer Socket Proxy | Securely exposes the Docker/Podman daemon socket via TCP to Traefik without exposing the raw socket file. |
-| **`traefik-cloudflared`** | Traefik + Cloudflared (Dual Tunnels) | Edge ingress reverse proxy routing personal (`*.leazirondi.com.br`) and academic (`*.unesp.br`) web traffic over Cloudflare Tunnels. |
+| **`traefik`** | Traefik + Cloudflared (Dual Tunnels) | Edge ingress reverse proxy routing personal (`*.leazirondi.com.br`) and academic (`*.unesp.br`) web traffic over Cloudflare Tunnels. |
 | **`n8n`** | n8n + PostgreSQL 16 | Production self-hosted workflow automation platform with persistent relational storage. |
 
 ---
 
 ## 🏛️ Network Topology & Interconnects
 
-- **`edge-network`**: External Docker bridge network routing HTTPS requests from Traefik to backend services.
+- **`cloudflared-network`**: Connects Traefik to the Cloudflare Tunnel daemons. Nothing else joins it.
+- **`tunnel-network`**: Traefik and the services published through the Cloudflare Tunnel or over the tailnet.
+- **`public-network`**: Traefik and the services published directly on the host's public address.
 - **`socket-proxy`**: Dedicated network allowing Traefik to query the Podman API for container label auto-discovery.
-- **`tunnel`**: Internal bridge connecting Traefik to the Cloudflare Tunnel daemon for zero-open-port ingress.
 
 ---
 
@@ -44,5 +45,5 @@ sops -d secrets/<secret_name>.sops.yaml > secrets/<secret_name>
 Services are deployed declaratively from the dotfiles repository:
 ```bash
 # Deploy all active production stacks to Helsinki:
-./scripts/deploy.sh hetzner helsinki --svc socket-proxy traefik-cloudflared n8n
+./scripts/deploy.sh hetzner helsinki --svc socket-proxy traefik n8n
 ```

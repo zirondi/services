@@ -1,0 +1,18 @@
+http:
+  middlewares:
+    # Baseline headers for everything on the public entrypoint. A per-service
+    # Content-Security-Policy is added on top of this, not here.
+    security-headers:
+      headers:
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        contentTypeNosniff: true
+        referrerPolicy: "strict-origin-when-cross-origin"
+        customFrameOptionsValue: "SAMEORIGIN"
+
+tls:
+  options:
+    default:
+      minVersion: "VersionTLS12"
+      # Refuse handshakes for names no router declares
+      sniStrict: true

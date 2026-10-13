@@ -1,10 +1,41 @@
+# Pick the block that matches how the service is exposed and join the network
+# named in it. {NAME} is the service, {PORT} its internal port, {DOMAIN} one of
+# the zones the Cloudflare DNS token can edit (leazirondi.com.br, zirondi.tech).
+# INSTANCE_HOST is exported by scripts/deploy.sh (the flake host name).
+
+# ---------------------------------------------------------------------
+# 1. Cloudflare Tunnel: public name, TLS terminated by Cloudflare
+#    network: tunnel-network
+# ---------------------------------------------------------------------
 labels:
   - "traefik.enable=true"
-  - "traefik.http.routers.{NAME}.rule=Host(`{NAME}.leazirondi.com.br`) || Host(`www.{NAME}.leazirondi.com.br`)"
-  - "traefik.http.routers.{NAME}.entrypoints=websecure"
-  - "traefik.http.routers.{NAME}.tls=true"
-  - "traefik.http.routers.{NAME}.middlewares=my-service-csp@file"
+  - "traefik.docker.network=tunnel-network"
   - "traefik.http.services.{NAME}.loadbalancer.server.port={PORT}"
-  - "traefik.docker.network=edge-network"
+  - "traefik.http.routers.{NAME}.rule=Host(`{NAME}.{DOMAIN}`)"
+  - "traefik.http.routers.{NAME}.entrypoints=web"
 
-  - "traefik.http.routers.traefik.service=api@internal" #Use only for exposing traefik dashboard
+# ---------------------------------------------------------------------
+# 2. Tailnet: per-host name, wildcard certificate from Let's Encrypt
+#    network: tunnel-network (add these routers to block 1 to have both)
+# ---------------------------------------------------------------------
+labels:
+  - "traefik.http.routers.{NAME}-inst.rule=Host(`{NAME}.${INSTANCE_HOST:?}.{DOMAIN}`)"
+  - "traefik.http.routers.{NAME}-inst.entrypoints=websecure"
+  - "traefik.http.routers.{NAME}-inst.service={NAME}"
+  - "traefik.http.routers.{NAME}-inst.tls.certresolver=cloudflare"
+  - "traefik.http.routers.{NAME}-inst.tls.domains[0].main=${INSTANCE_HOST}.{DOMAIN}"
+  - "traefik.http.routers.{NAME}-inst.tls.domains[0].sans=*.${INSTANCE_HOST}.{DOMAIN}"
+
+# ---------------------------------------------------------------------
+# 3. Direct on the public address (host port 443), DNS-only record
+#    network: public-network, and no other Traefik network
+# ---------------------------------------------------------------------
+labels:
+  - "traefik.enable=true"
+  - "traefik.docker.network=public-network"
+  - "traefik.http.services.{NAME}.loadbalancer.server.port={PORT}"
+  - "traefik.http.routers.{NAME}.rule=Host(`{NAME}.{GROUP}.{DOMAIN}`)"
+  - "traefik.http.routers.{NAME}.entrypoints=public"
+  - "traefik.http.routers.{NAME}.tls.certresolver=cloudflare"
+  - "traefik.http.routers.{NAME}.tls.domains[0].main={GROUP}.{DOMAIN}"
+  - "traefik.http.routers.{NAME}.tls.domains[0].sans=*.{GROUP}.{DOMAIN}"
