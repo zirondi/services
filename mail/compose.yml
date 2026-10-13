@@ -1,0 +1,69 @@
+name: mail
+
+# >> -------------------- Networks -------------------- << #
+networks:
+  tunnel-network:
+    external: true
+  mail-internal:
+    name: mail-internal
+
+# >> -------------------- Services -------------------- << #
+services:
+  stalwart-mail:
+    image: docker.io/stalwartlabs/stalwart:latest
+    container_name: stalwart-mail
+    restart: unless-stopped
+    sysctls:
+      - net.ipv4.ip_unprivileged_port_start=25
+    security_opt:
+      - no-new-privileges=true
+    ports:
+      - "25:25"      # SMTP Inbound direto do IPv4/IPv6 público
+      - "587:587"    # SMTP Submission (Clientes autenticados)
+      - "465:465"    # SMTPS (Implicit TLS)
+      - "993:993"    # IMAPS (Acesso seguro à caixa postal)
+      - "4190:4190"  # ManageSieve (Filtros de regras de e-mail)
+    environment:
+      - TZ=America/Sao_Paulo
+      - STALWART_SERVER_DNS_DNSSEC=disabled
+    dns:
+      - 1.1.1.1
+      - 1.0.0.1
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - ${HOME}/volumes/stalwart/data:/opt/stalwart-mail:U
+      - ${HOME}/volumes/stalwart/config:/etc/stalwart:U
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.mail-admin.rule=Host(`mail-admin.leazirondi.com.br`)"
+      - "traefik.http.routers.mail-admin.entrypoints=web"
+      - "traefik.http.services.mail-admin.loadbalancer.server.port=8080"
+      - "traefik.docker.network=tunnel-network"
+    networks:
+      - tunnel-network
+      - mail-internal
+
+  webmail:
+    image: ghcr.io/the-djmaze/snappymail:latest
+    container_name: webmail
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges=true
+    environment:
+      - TZ=America/Sao_Paulo
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - ${HOME}/volumes/snappymail/data:/var/lib/snappymail:U
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.webmail.rule=Host(`webmail.leazirondi.com.br`)"
+      - "traefik.http.routers.webmail.entrypoints=web"
+      - "traefik.http.services.webmail.loadbalancer.server.port=8888"
+      - "traefik.docker.network=tunnel-network"
+    networks:
+      - tunnel-network
+      - mail-internal
+    depends_on:
+      - stalwart-mail
