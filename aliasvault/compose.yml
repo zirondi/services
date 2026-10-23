@@ -1,0 +1,227 @@
+name: aliasvault
+# AliasVault: password manager and email alias manager, on trial next to
+# Vaultwarden. The upstream multi-container layout (docker-compose.yml of the
+# release), pinned, with its own nginx in front of client, api and admin.
+# Traefik reaches that nginx on port 80 over two routers: the public one
+# (Cloudflare Tunnel) without /admin, the tailnet one with everything.
+#
+# Aliases (@alias.leazirondi.com.br) arrive at Stalwart, which owns port 25 on
+# this host and relays the domain to aliasvault-smtp over mail-internal; no
+# port is published here.
+#
+# Upgrades: the server must run a release at least as new as the apps (the
+# vault format changed in 0.31.0). Bump every image tag together.
+
+# >> -------------------- Shared settings -------------------- << #
+# The upstream stack hands one .env to every container; this map plays that
+# role. Secrets are not here: each service reads the files under SECRETS_PATH.
+x-aliasvault-env: &aliasvault-env
+  TZ: America/Sao_Paulo
+  SECRETS_PATH: /run/secrets
+  POSTGRES_HOST: aliasvault-postgres
+  POSTGRES_PORT: "5432"
+  POSTGRES_DATABASE: aliasvault
+  POSTGRES_USER: aliasvault
+  # Accounts come in through invites (admin, Users > Invites).
+  PUBLIC_REGISTRATION_ENABLED: "false"
+  # Rootless Podman hides the client address, so the logged IP would be
+  # Traefik's anyway.
+  IP_LOGGING_ENABLED: "false"
+  PRIVATE_EMAIL_DOMAINS: alias.leazirondi.com.br
+  HIDDEN_PRIVATE_EMAIL_DOMAINS: ""
+  SMTP_ADVERTISED_HOSTNAME: mail.leazirondi.com.br
+  # Stalwart talks to it over the stack network; TLS stays on Stalwart.
+  SMTP_TLS_ENABLED: "false"
+  # TLS ends at Traefik or Cloudflare; the nginx serves plain HTTP on 80.
+  FORCE_HTTPS_REDIRECT: "false"
+  LETSENCRYPT_ENABLED: "false"
+  # Left empty on purpose: /admin is kept off the public router by Traefik,
+  # since an IP allowlist cannot see real client addresses here.
+  ADMIN_IP_ALLOWLIST: ""
+  TRUSTED_PROXIES: ""
+  MAX_UPLOAD_SIZE_MB: "100"
+
+# >> -------------------- Networks -------------------- << #
+networks:
+  tunnel-network:
+    external: true
+  # Created by the mail stack; only aliasvault-smtp joins it.
+  mail-internal:
+    external: true
+  # Not `internal`: the api fetches site favicons.
+  aliasvault-internal:
+    name: aliasvault-internal
+
+# >> -------------------- Secrets --------------------- << #
+secrets:
+  postgres_password:
+    file: ./secrets/postgres_password
+  jwt_key:
+    file: ./secrets/jwt_key
+  data_protection_cert_pass:
+    file: ./secrets/data_protection_cert_pass
+  # "<hash>|<ISO timestamp>", the hash from
+  # `podman run --rm ghcr.io/aliasvault/installcli:<tag> hash-password <password>`
+  admin_password_hash:
+    file: ./secrets/admin_password_hash
+
+# >> -------------------- Services -------------------- << #
+# Service names match upstream: the nginx config proxies to client, api and
+# admin by those names.
+services:
+  postgres:
+    image: ghcr.io/aliasvault/postgres:0.31.1
+    container_name: aliasvault-postgres
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges=true
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aliasvault"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    environment:
+      <<: *aliasvault-env
+      POSTGRES_DB: aliasvault
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - ${HOME}/volumes/aliasvault/postgres:/var/lib/postgresql/data
+    networks:
+      - aliasvault-internal
+    secrets:
+      - postgres_password
+
+  client:
+    image: ghcr.io/aliasvault/client:0.31.1
+    container_name: aliasvault-client
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges=true
+    environment: *aliasvault-env
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - aliasvault-internal
+
+  api:
+    image: ghcr.io/aliasvault/api:0.31.1
+    container_name: aliasvault-api
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges=true
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment: *aliasvault-env
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - ${HOME}/volumes/aliasvault/database:/database
+      - ${HOME}/volumes/aliasvault/logs:/logs
+    networks:
+      - aliasvault-internal
+    secrets:
+      - postgres_password
+      - jwt_key
+      - data_protection_cert_pass
+
+  admin:
+    image: ghcr.io/aliasvault/admin:0.31.1
+    container_name: aliasvault-admin
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges=true
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment: *aliasvault-env
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - ${HOME}/volumes/aliasvault/database:/database
+      - ${HOME}/volumes/aliasvault/logs:/logs
+    networks:
+      - aliasvault-internal
+    secrets:
+      - postgres_password
+      - data_protection_cert_pass
+      - admin_password_hash
+
+  smtp:
+    image: ghcr.io/aliasvault/smtp:0.31.1
+    container_name: aliasvault-smtp
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges=true
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment: *aliasvault-env
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - ${HOME}/volumes/aliasvault/database:/database
+      - ${HOME}/volumes/aliasvault/logs:/logs
+    networks:
+      - aliasvault-internal
+      - mail-internal
+    secrets:
+      - postgres_password
+      - data_protection_cert_pass
+
+  task-runner:
+    image: ghcr.io/aliasvault/task-runner:0.31.1
+    container_name: aliasvault-task-runner
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges=true
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment: *aliasvault-env
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+      - ${HOME}/volumes/aliasvault/database:/database
+      - ${HOME}/volumes/aliasvault/logs:/logs
+    networks:
+      - aliasvault-internal
+    secrets:
+      - postgres_password
+      - data_protection_cert_pass
+
+  reverse-proxy:
+    image: ghcr.io/aliasvault/reverse-proxy:0.31.1
+    container_name: aliasvault-proxy
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges=true
+    depends_on:
+      - client
+      - api
+      - admin
+    environment: *aliasvault-env
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=tunnel-network"
+      - "traefik.http.services.aliasvault.loadbalancer.server.port=80"
+      # Public, through Cloudflare Tunnel: everything but the admin panel
+      - "traefik.http.routers.aliasvault.rule=Host(`aliasvault.leazirondi.com.br`) && !PathPrefix(`/admin`)"
+      - "traefik.http.routers.aliasvault.entrypoints=web"
+      # Tailnet: everything, admin included
+      - "traefik.http.routers.aliasvault-inst.rule=Host(`aliasvault.${INSTANCE_HOST:?INSTANCE_HOST is not set}.leazirondi.com.br`)"
+      - "traefik.http.routers.aliasvault-inst.entrypoints=websecure"
+      - "traefik.http.routers.aliasvault-inst.service=aliasvault"
+      - "traefik.http.routers.aliasvault-inst.tls.certresolver=cloudflare"
+      - "traefik.http.routers.aliasvault-inst.tls.domains[0].main=${INSTANCE_HOST}.leazirondi.com.br"
+      - "traefik.http.routers.aliasvault-inst.tls.domains[0].sans=*.${INSTANCE_HOST}.leazirondi.com.br"
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - tunnel-network
+      - aliasvault-internal
