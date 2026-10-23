@@ -90,7 +90,7 @@ de e-mail na internet (Gmail, Outlook, outros MTA).
 
 | Campo            | Valor                                        |
 | ---------------- | -------------------------------------------- |
-| **Porta SMTP**   | `25` (MTA-to-MTA) / `465` (SMTPS) / `587` (Submission) |
+| **Porta SMTP**   | `25` (MTA-to-MTA) / `465` (SMTPS, envio dos clientes) |
 | **TLS/Segurança**| Obrigatório — `STARTTLS` ou `Implicit TLS`   |
 | **Autenticação** | Depende do contexto (MTA relay geralmente não autentica) |
 
@@ -100,7 +100,6 @@ de e-mail na internet (Gmail, Outlook, outros MTA).
 | ------ | ------------ | -------------------------------------- |
 | `25`   | SMTP         | Receber e-mails de outros servidores   |
 | `465`  | SMTPS        | Envio autenticado (Implicit TLS)       |
-| `587`  | Submission   | Envio autenticado (STARTTLS)           |
 | `993`  | IMAPS        | Acesso à caixa postal (clientes)       |
 | `4190` | ManageSieve  | Filtros de regras de e-mail            |
 
@@ -112,25 +111,3 @@ de e-mail na internet (Gmail, Outlook, outros MTA).
 - **DMARC**: `v=DMARC1; p=reject; rua=mailto:postmaster@leazirondi.com.br`
 - **rDNS (PTR)**: IP do Hetzner apontando para `mail.leazirondi.com.br`
 
----
-
-## Cenário C: Webmail (SnappyMail → Stalwart, mesmo servidor)
-
-O SnappyMail acessa o Stalwart como um **cliente de e-mail** (IMAP + SMTP),
-não como um relay. Configurado no Admin Panel do SnappyMail (`?admin` → Domains).
-
-| Campo            | Valor                         |
-| ---------------- | ----------------------------- |
-| **IMAP Server**  | `stalwart-mail`               |
-| **IMAP Port**    | `993`                         |
-| **IMAP Secure**  | `SSL/TLS`                     |
-| **SMTP Server**  | `stalwart-mail`               |
-| **SMTP Port**    | `465`                         |
-| **SMTP Secure**  | `SSL/TLS`                     |
-| **Sieve Server** | `stalwart-mail`               |
-| **Sieve Port**   | `4190`                        |
-| **Sieve Secure** | `None`                        |
-
-> **Nota:** O SnappyMail usa TLS para IMAP/SMTP porque simula um cliente de
-> e-mail real. Pode ser necessário marcar "Allow self-signed certificates"
-> caso o Stalwart use certificados auto-gerados para o hostname interno.
