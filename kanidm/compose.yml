@@ -8,7 +8,7 @@ networks:
 # >> -------------------- Services -------------------- << #
 services:
   kanidm:
-    image: docker.io/kanidm/server:latest
+    image: docker.io/kanidm/server:1.11.2
     container_name: kanidm
     restart: unless-stopped
     security_opt:

@@ -13,7 +13,7 @@ secrets:
 # >> -------------------- Services -------------------- << #
 services:
   calibre-web:
-    image: docker.io/crocodilestick/calibre-web-automated:latest
+    image: docker.io/crocodilestick/calibre-web-automated:v4.0.8
     container_name: calibre-web
     restart: unless-stopped
     security_opt:

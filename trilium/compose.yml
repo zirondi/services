@@ -8,7 +8,7 @@ networks:
 # >> -------------------- Services -------------------- << #
 services:
   trilium:
-    image: docker.io/triliumnext/notes:latest
+    image: docker.io/triliumnext/notes:v0.95.0
     container_name: trilium
     restart: unless-stopped
     security_opt:

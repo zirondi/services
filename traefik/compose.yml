@@ -63,7 +63,7 @@ services:
       - socket-proxy
 
   cloudflared:
-    image: docker.io/cloudflare/cloudflared:latest
+    image: docker.io/cloudflare/cloudflared:2026.10.3
     container_name: cloudflared
     restart: unless-stopped
     security_opt:
@@ -82,7 +82,7 @@ services:
         condition: service_healthy
 
   cloudflared-unesp:
-    image: docker.io/cloudflare/cloudflared:latest
+    image: docker.io/cloudflare/cloudflared:2026.10.3
     container_name: cloudflared-unesp
     restart: unless-stopped
     security_opt:

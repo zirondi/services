@@ -15,7 +15,7 @@ secrets:
 # >> -------------------- Services -------------------- << #
 services:
   vaultwarden:
-    image: docker.io/vaultwarden/server:latest
+    image: docker.io/vaultwarden/server:1.37.3
     container_name: vaultwarden
     restart: unless-stopped
     security_opt:
