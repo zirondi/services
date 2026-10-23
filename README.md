@@ -4,46 +4,53 @@
 [![Runtime: Podman Compose](https://img.shields.io/badge/runtime-Podman_Compose-purple.svg)](https://podman.io)
 [![Secrets: SOPS + Age](https://img.shields.io/badge/secrets-SOPS_%2B_Age-orange.svg)](.sops.yaml)
 
-Declarative Docker/Podman Compose application stacks deployed and running on cloud infrastructure (**Helsinki VPS**).
+Declarative Podman Compose stacks for the servers managed by the [dotfiles](https://github.com/zirondi/dotfiles) flake, where this repository is the `services/` submodule. Most run on the Hetzner VPS in Helsinki (host `hetzner`). Image tags are pinned; `diun` reports new releases.
 
 ---
 
-## 🗺️ Active Production Deployment (Helsinki)
+## 🗺️ Stacks
 
-| Stack | Service Components | Role / Network Placement |
-| :--- | :--- | :--- |
-| **`socket-proxy`** | LinuxServer Socket Proxy | Securely exposes the Docker/Podman daemon socket via TCP to Traefik without exposing the raw socket file. |
-| **`traefik`** | Traefik + Cloudflared (Dual Tunnels) | Edge ingress reverse proxy routing personal (`*.leazirondi.com.br`) and academic (`*.unesp.br`) web traffic over Cloudflare Tunnels. |
-| **`n8n`** | n8n + PostgreSQL 16 | Production self-hosted workflow automation platform with persistent relational storage. |
+| Stack | Components | Exposure | State |
+| :--- | :--- | :--- | :--- |
+| **`socket-proxy`** | LinuxServer socket proxy | none | running |
+| **`traefik`** | Traefik + two `cloudflared` connectors | ingress | running |
+| **`whoami`** | Traefik test service | tailnet | running |
+| **`n8n`** | n8n + PostgreSQL 16 | tunnel | running |
+| **`vaultwarden`** | Vaultwarden | tunnel | running |
+| **`mail`** | Stalwart (SMTP 25/465, IMAPS 993, Sieve 4190; admin over the tunnel) | public ports + tunnel | running |
+| **`nextcloud`** | Nextcloud (Mail, Calendar, Contacts) + PostgreSQL 17 + Redis | tailnet | running |
+| **`aliasvault`** | AliasVault (password and alias manager) + PostgreSQL | tunnel without `/admin`, tailnet with it | on trial |
+| **`diun`** | Diun (image update notices to Telegram) | none | prepared |
+| **`kanidm`** | Kanidm (identity) | — | parked (data kept on the host) |
+| **`trilium`**, **`calibre-web`** | Trilium Notes, Calibre-Web Automated | — | never deployed; meant for the Oracle host |
 
 ---
 
-## 🏛️ Network Topology & Interconnects
+## 🏛️ Networks
 
-- **`cloudflared-network`**: Connects Traefik to the Cloudflare Tunnel daemons. Nothing else joins it.
+- **`cloudflared-network`**: Traefik and the Cloudflare Tunnel connectors. Nothing else joins it.
 - **`tunnel-network`**: Traefik and the services published through the Cloudflare Tunnel or over the tailnet.
 - **`public-network`**: Traefik and the services published directly on the host's public address.
-- **`socket-proxy`**: Dedicated network allowing Traefik to query the Podman API for container label auto-discovery.
+- **`socket-proxy`**: the Docker API for Traefik and Diun.
+
+Conventions for a new stack (exposure, hardening, secrets) are in `docs/agents/compose.md` of the dotfiles repository and in [`.template/`](.template).
 
 ---
 
-## 🔐 Secrets Management (SOPS)
+## 🔐 Secrets (SOPS)
 
-All secrets are encrypted with **Age** keys matching the host SSH keys and admin keys configured in `.sops.yaml`:
+Secrets are age-encrypted for the admin key and the host keys listed in `.sops.yaml`; only `*.sops.yaml` files are committed. The deploy script decrypts them on the host with the host's SSH key.
+
 ```bash
-# Encrypt or edit an existing secret:
-sops services/<service>/secrets/<secret_name>.sops.yaml
-
-# Runtime decryption on host:
-sops -d secrets/<secret_name>.sops.yaml > secrets/<secret_name>
+sops services/<stack>/secrets/<name>.sops.yaml
 ```
 
 ---
 
-## 🚢 Deployment Workflow
+## 🚢 Deployment
 
-Services are deployed declaratively from the dotfiles repository:
+From the dotfiles repository, after validating:
+
 ```bash
-# Deploy all active production stacks to Helsinki:
-./scripts/deploy.sh hetzner helsinki --svc socket-proxy traefik n8n
+just deploy hetzner --svc <stack> [<stack>...]
 ```
