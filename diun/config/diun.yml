@@ -1,0 +1,32 @@
+db:
+  path: /data/diun.db
+
+watch:
+  schedule: "0 */6 * * *"
+  jitter: 30s
+  # The first run only records the tags it finds
+  firstCheckNotif: false
+
+# Applies to every image unless a container label (diun.*) or an entry in
+# rpi3-images.yml overrides it: watch the repository and report a release
+# tag that is newer than the newest one seen so far.
+defaults:
+  watchRepo: true
+  notifyOn:
+    - new
+  sortTags: semver
+  maxTags: 5
+  includeTags:
+    - ^v?\d+(\.\d+){1,3}$
+
+providers:
+  docker:
+    endpoint: tcp://socket-proxy:2375
+    watchByDefault: true
+  file:
+    filename: /etc/diun/rpi3-images.yml
+
+notif:
+  telegram:
+    tokenFile: /run/secrets/telegram_bot_token
+    chatIDsFile: /run/secrets/telegram_chat_ids

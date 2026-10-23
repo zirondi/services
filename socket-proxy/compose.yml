@@ -7,7 +7,10 @@ networks:
 # >> -------------------- Services -------------------- << #
 services:
   socket-proxy:
-    image: lscr.io/linuxserver/socket-proxy:latest
+    image: lscr.io/linuxserver/socket-proxy:3.4.4-r0-ls97
+    labels:
+      # LinuxServer tags carry the package and build numbers (diun/config/diun.yml)
+      - "diun.include_tags=^\\d+\\.\\d+\\.\\d+-r\\d+-ls\\d+$"
     container_name: socket-proxy
     restart: unless-stopped
     security_opt:
