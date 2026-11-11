@@ -10,7 +10,11 @@ name: aliasvault
 # port is published here.
 #
 # Upgrades: the server must run a release at least as new as the apps (the
-# vault format changed in 0.31.0). Bump every image tag together.
+# vault format changed in 0.31.0). Bump every image tag together. The api
+# applies database migrations on start, so take a pg_dump first. The .NET
+# runtime is not in the release notes: upstream builds on the floating
+# aspnet:10.0-alpine tag, so read DOTNET_VERSION from the image config when a
+# .NET CVE matters (0.31.3 runs 10.0.15).
 
 # >> -------------------- Shared settings -------------------- << #
 # The upstream stack hands one .env to every container; this map plays that
@@ -70,7 +74,7 @@ secrets:
 # admin by those names.
 services:
   postgres:
-    image: ghcr.io/aliasvault/postgres:0.31.1
+    image: ghcr.io/aliasvault/postgres:0.31.3
     container_name: aliasvault-postgres
     restart: unless-stopped
     security_opt:
@@ -95,7 +99,7 @@ services:
       - postgres_password
 
   client:
-    image: ghcr.io/aliasvault/client:0.31.1
+    image: ghcr.io/aliasvault/client:0.31.3
     container_name: aliasvault-client
     restart: unless-stopped
     security_opt:
@@ -108,7 +112,7 @@ services:
       - aliasvault-internal
 
   api:
-    image: ghcr.io/aliasvault/api:0.31.1
+    image: ghcr.io/aliasvault/api:0.31.3
     container_name: aliasvault-api
     restart: unless-stopped
     security_opt:
@@ -130,7 +134,7 @@ services:
       - data_protection_cert_pass
 
   admin:
-    image: ghcr.io/aliasvault/admin:0.31.1
+    image: ghcr.io/aliasvault/admin:0.31.3
     container_name: aliasvault-admin
     restart: unless-stopped
     security_opt:
@@ -152,7 +156,7 @@ services:
       - admin_password_hash
 
   smtp:
-    image: ghcr.io/aliasvault/smtp:0.31.1
+    image: ghcr.io/aliasvault/smtp:0.31.3
     container_name: aliasvault-smtp
     restart: unless-stopped
     security_opt:
@@ -174,7 +178,7 @@ services:
       - data_protection_cert_pass
 
   task-runner:
-    image: ghcr.io/aliasvault/task-runner:0.31.1
+    image: ghcr.io/aliasvault/task-runner:0.31.3
     container_name: aliasvault-task-runner
     restart: unless-stopped
     security_opt:
@@ -195,7 +199,7 @@ services:
       - data_protection_cert_pass
 
   reverse-proxy:
-    image: ghcr.io/aliasvault/reverse-proxy:0.31.1
+    image: ghcr.io/aliasvault/reverse-proxy:0.31.3
     container_name: aliasvault-proxy
     restart: unless-stopped
     security_opt:
