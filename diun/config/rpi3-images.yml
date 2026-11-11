@@ -1,11 +1,11 @@
 # Images declared in hosts/rpi3/services.nix. Keep the tags in step with that
 # file; Diun reports releases newer than these.
-- name: docker.io/cloudflare/cloudflared:2026.10.3
+- name: docker.io/cloudflare/cloudflared:2026.10.5
   metadata:
     host: rpi3
-- name: docker.io/pihole/pihole:2026.07.2
+- name: docker.io/pihole/pihole:2026.10.0
   metadata:
     host: rpi3
-- name: docker.io/ferdium/ferdium-server:2.0.13
+- name: docker.io/ferdium/ferdium-server:2.0.14
   metadata:
     host: rpi3
