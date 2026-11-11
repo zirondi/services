@@ -3,16 +3,23 @@ name: n8n
 networks:
   tunnel-network:
     external: true
+  # n8n and its task runners only. `internal`: code run by a Code node has no
+  # way out of the runner container.
+  n8n-internal:
+    name: n8n-internal
+    internal: true
 
 # >> -------------------- Secrets --------------------- << #
 secrets:
   n8n_db_pwd:
     file: ./secrets/n8n_db_pwd
+  n8n_runners_token:
+    file: ./secrets/n8n_runners_token
 
 # >> -------------------- Services -------------------- << #
 services:
   n8n:
-    image: docker.io/n8nio/n8n:2.38.5
+    image: docker.io/n8nio/n8n:2.44.6
     container_name: n8n
     restart: unless-stopped
     user: "1000:1000"
@@ -29,10 +36,20 @@ services:
       - N8N_PROTOCOL=https
       - NODE_ENV=production
       - N8N_EDITOR_BASE_URL=https://n8n.leazirondi.com.br
-      - WEBHOOK_URL=https://n8n.leazirondi.com.br/
+      - N8N_WEBHOOK_URL=https://n8n.leazirondi.com.br/
       - N8N_PROXY_HOPS=2
       - PUBLIC_IMAGE_BASE_URL=https://n8n.leazirondi.com.br/webhook
-      
+
+      # Code nodes run in the n8n-runners container (external mode)
+      - N8N_RUNNERS_MODE=external
+      - N8N_RUNNERS_BROKER_LISTEN_ADDRESS=0.0.0.0
+      - N8N_RUNNERS_AUTH_TOKEN_FILE=/run/secrets/n8n_runners_token
+      - N8N_RUNNERS_TASK_TIMEOUT=300
+
+      # The coming defaults; no workflow uses the Compression node
+      - N8N_COMPRESSION_NODE_MAX_DECOMPRESSED_SIZE_BYTES=268435456
+      - N8N_COMPRESSION_NODE_MAX_ZIP_ENTRIES=1000
+
       # Integração com PostgreSQL
       - DB_TYPE=postgresdb
       - DB_POSTGRESDB_HOST=n8n-postgres
@@ -54,11 +71,41 @@ services:
       - ${HOME}/volumes/n8n/fonts:/srv/fonts:ro
     secrets:
       - n8n_db_pwd
+      - n8n_runners_token
     networks:
       - tunnel-network
+      - n8n-internal
     depends_on:
       n8n-postgres:
         condition: service_healthy
+
+  # Task runners for the Code node (JavaScript and Python). The tag must match
+  # the n8n image. The launcher has no _FILE variant for the token, so the
+  # entrypoint reads it from the secret.
+  n8n-runners:
+    image: docker.io/n8nio/runners:2.44.6
+    container_name: n8n-runners
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges=true
+    entrypoint:
+      - /bin/sh
+      - -c
+      - N8N_RUNNERS_AUTH_TOKEN="$$(cat /run/secrets/n8n_runners_token)" exec /sbin/tini -- /usr/local/bin/task-runner-launcher javascript python
+    environment:
+      - TZ=America/Sao_Paulo
+      - GENERIC_TIMEZONE=America/Sao_Paulo
+      - N8N_RUNNERS_TASK_BROKER_URI=http://n8n:5679
+      - N8N_RUNNERS_TASK_TIMEOUT=300
+    volumes:
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    secrets:
+      - n8n_runners_token
+    networks:
+      - n8n-internal
+    depends_on:
+      - n8n
 
   n8n-postgres:
     image: docker.io/library/postgres:16-alpine
