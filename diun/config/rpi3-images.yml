@@ -3,7 +3,7 @@
 - name: docker.io/cloudflare/cloudflared:2026.10.5
   metadata:
     host: rpi3
-- name: docker.io/pihole/pihole:2026.10.0
+- name: docker.io/pihole/pihole:2026.11.0
   metadata:
     host: rpi3
 - name: docker.io/ferdium/ferdium-server:2.0.14
